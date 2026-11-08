@@ -1,0 +1,98 @@
+name: Readest Fixed Android APK
+
+on:
+  push:
+    branches:
+      - fix/pdf-selection-handles
+    paths:
+      - apps/readest-app/src/app/reader/hooks/useTextSelector.ts
+      - .github/workflows/readest-fixed-android.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug-apk:
+    name: Android ARM64 debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - name: Check out patched fork
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+
+      - name: Install Android NDK
+        run: sdkmanager "ndk;28.2.13676358"
+
+      - name: Install Rust ARM64 target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare PDF.js vendor assets
+        run: pnpm --filter @readest/readest-app setup-vendors
+
+      - name: Configure separate app identity
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'apps/readest-app/src-tauri/tauri.conf.json';
+          const config = JSON.parse(fs.readFileSync(path, 'utf8'));
+          config.identifier = 'com.kakabobik.readestfixed';
+          config.productName = 'Readest Fixed';
+          fs.writeFileSync(path, JSON.stringify(config, null, 2) + '\n');
+          NODE
+          echo 'NEXT_PUBLIC_APP_PLATFORM=tauri' > apps/readest-app/.env.local
+
+      - name: Build Android debug APK (separate install)
+        working-directory: apps/readest-app
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
+        run: |
+          set -euo pipefail
+          rm -rf src-tauri/gen/android
+          pnpm tauri android init
+          # Reassert app identity in case Tauri init regenerated configuration.
+          node <<'NODE'
+          const fs = require('node:fs');
+          const p = 'src-tauri/tauri.conf.json';
+          const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+          if (j.identifier !== 'com.kakabobik.readestfixed')
+            throw new Error('Unexpected app id after Android init');
+          NODE
+          pnpm tauri android build --debug -t aarch64
+          find src-tauri/gen/android/app/build/outputs/apk -type f -name '*.apk' -print
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Readest-Fixed-Android-arm64-debug
+          path: apps/readest-app/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 14
