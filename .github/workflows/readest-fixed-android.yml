@@ -23,6 +23,29 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Download and verify Gradle 8.14.3 before compiling
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip="$RUNNER_TEMP/gradle-8.14.3-bin.zip"
+          sha=bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531
+          for url in \
+            'https://mirrors.aliyun.com/gradle/distributions/v8.14.3/gradle-8.14.3-bin.zip' \
+            'https://mirrors.huaweicloud.com/gradle/gradle-8.14.3-bin.zip'; do
+            echo "Trying verified Gradle mirror: $url"
+            rm -f "$zip"
+            if curl --fail --location --show-error --retry 2 --retry-all-errors \
+              --connect-timeout 20 --max-time 600 --output "$zip" "$url"; then
+              if echo "$sha  $zip" | sha256sum --check --status; then
+                echo "Verified Gradle 8.14.3 archive from $url"
+                exit 0
+              fi
+              echo "::warning::Gradle download failed SHA-256 verification"
+            fi
+          done
+          echo "::error::Cannot fetch checksum-verified Gradle 8.14.3 from independent mirrors"
+          exit 1
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
@@ -131,10 +154,12 @@ jobs:
             printf '\nnetworkTimeout=300000\n' >> "$wrapper_props"
           fi
           echo 'Gradle wrapper download timeout: 300 seconds'
-          # services.gradle.org currently redirects the distribution ZIP to
-          # github.com/gradle/gradle-distributions, where GitHub returned 504.
-          # Download directly from Gradle's distribution CDN instead.
-          sed -i 's#^distributionUrl=.*#distributionUrl=https\\://downloads.gradle.org/distributions/gradle-8.14.3-bin.zip#' "$wrapper_props"
+          # The verified archive was fetched before compilation. Read it
+          # locally; neither services.gradle.org nor downloads.gradle.org is
+          # safe here because both redirect to GitHub Releases (HTTP 504).
+          gradle_zip="$RUNNER_TEMP/gradle-8.14.3-bin.zip"
+          test -s "$gradle_zip"
+          sed -i "s#^distributionUrl=.*#distributionUrl=file\\:$gradle_zip#" "$wrapper_props"
           grep '^distributionUrl=' "$wrapper_props"
           # Pin the official SHA-256 so corrupted downloads cannot be used.
           if grep -q '^distributionSha256Sum=' "$wrapper_props"; then
