@@ -118,6 +118,17 @@ jobs:
             printf '\nnetworkTimeout=300000\n' >> "$wrapper_props"
           fi
           echo 'Gradle wrapper download timeout: 300 seconds'
+          # services.gradle.org currently redirects the distribution ZIP to
+          # github.com/gradle/gradle-distributions, where GitHub returned 504.
+          # Download directly from Gradle's distribution CDN instead.
+          sed -i 's#^distributionUrl=.*#distributionUrl=https\\://downloads.gradle.org/distributions/gradle-8.14.3-bin.zip#' "$wrapper_props"
+          grep '^distributionUrl=' "$wrapper_props"
+          # Pin the official SHA-256 so corrupted downloads cannot be used.
+          if grep -q '^distributionSha256Sum=' "$wrapper_props"; then
+            sed -i 's/^distributionSha256Sum=.*/distributionSha256Sum=bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531/' "$wrapper_props"
+          else
+            echo 'distributionSha256Sum=bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531' >> "$wrapper_props"
+          fi
           pnpm tauri android build --debug -t aarch64
           find src-tauri/gen/android/app/build/outputs/apk -type f -name '*.apk' -print
 
