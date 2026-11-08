@@ -86,6 +86,16 @@ jobs:
           if (j.identifier !== 'com.kakabobik.readestfixed')
             throw new Error('Unexpected app id after Android init');
           NODE
+          # The generated Gradle wrapper defaults to a 10-second download timeout.
+          # GitHub runners may need longer to fetch gradle-8.14.3-bin.zip.
+          wrapper_props=src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties
+          test -f "$wrapper_props"
+          if grep -q '^networkTimeout=' "$wrapper_props"; then
+            sed -i 's/^networkTimeout=.*/networkTimeout=300000/' "$wrapper_props"
+          else
+            printf '\nnetworkTimeout=300000\n' >> "$wrapper_props"
+          fi
+          echo 'Gradle wrapper download timeout: 300 seconds'
           pnpm tauri android build --debug -t aarch64
           find src-tauri/gen/android/app/build/outputs/apk -type f -name '*.apk' -print
 
