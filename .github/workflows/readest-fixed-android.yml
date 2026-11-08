@@ -136,7 +136,30 @@ jobs:
           set -euo pipefail
           rm -rf src-tauri/gen/android
           pnpm tauri android init
-          # Reassert app identity in case Tauri init regenerated configuration.
+          # Tauri's init overwrites Readest's tracked Gradle/Kotlin Android
+          # customizations, including the 'store' and 'pen' flavor selectors.
+          # Restore the project's real Android configuration (as its official
+          # release workflow does) before building.
+          git restore --worktree -- src-tauri/gen/android
+          # Keep the original Kotlin namespace/Activity but give the debug
+          # installation its own Android application ID. This avoids replacing
+          # the user's officially signed Readest installation.
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("src-tauri/gen/android/app/build.gradle.kts")
+          code = path.read_text()
+          old = 'applicationId = "com.bilingify.readest"'
+          assert code.count(old) == 1, "Upstream app ID template changed"
+          assert 'missingDimensionStrategy("store", storeFlavor)' in code, "Store flavor selector missing"
+          assert 'missingDimensionStrategy("pen", penFlavor)' in code, "Pen flavor selector missing"
+          code = code.replace(old, 'applicationId = "com.kakabobik.readestfixed"')
+          path.write_text(code)
+          PY
+          # Explicitly choose the original FOSS / generic-pen dependency
+          # variants rather than relying on Gradle to select among four.
+          echo 'storeFlavor=foss' >> src-tauri/gen/android/gradle.properties
+          echo 'penFlavor=genericPen' >> src-tauri/gen/android/gradle.properties
+          # Verify Tauri's Rust config continues to identify the test app.
           node <<'NODE'
           const fs = require('node:fs');
           const p = 'src-tauri/tauri.conf.json';
