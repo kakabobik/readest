@@ -425,7 +425,7 @@ export const useTextSelector = (
   // programmatically doesn't bring them back (the engine only draws them for a
   // user-initiated selection). `handlesSuppressed` then hands the job to the
   // app's own handles, which do stack below the popup.
-  const suppressNativeSelectionHandles = async () => {
+  const suppressNativeSelectionHandles = async (publishIndex?: number) => {
     // Desktop has no grabbers to take away, and the dance would only churn the
     // selection the popup is anchored to.
     if (!appService?.isMobile) return;
@@ -451,7 +451,11 @@ export const useTextSelector = (
     }
     sel.addRange(range);
     releaseProgrammaticSelection();
-    setSelection((prev) => (prev ? { ...prev, handlesSuppressed: true } : prev));
+    if (publishIndex !== undefined) {
+      await makeSelection(sel, publishIndex, false, true);
+    } else {
+      setSelection((prev) => (prev ? { ...prev, handlesSuppressed: true } : prev));
+    }
   };
 
   // Put back a selection the app dropped itself (#6213). The instant dictionary
@@ -1183,6 +1187,20 @@ export const useTextSelector = (
     if (osPlatform === 'android' && appService?.isAndroidApp) {
       await sanitizeAndroidHyphenSelection(doc, index);
       await suppressNativeHandlesForPages();
+
+      // PDF.js text runs are absolutely positioned. On some Android WebViews
+      // native selection handles jump between runs while the finger drags.
+      // After the initial selection, use Readest's own SelectionRangeEditor
+      // handles for subsequent endpoint adjustments. Cross-page mode already
+      // replaces them; do not interfere with it or with a plain tap.
+      if (
+        bookData?.book?.format === 'PDF' &&
+        !crossPageEnabled() &&
+        gestureInitialRef.current &&
+        !sanitizedGestureRef.current
+      ) {
+        await suppressNativeSelectionHandles(index);
+      }
     }
   };
   const handleTouchStart = () => {
