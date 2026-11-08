@@ -57,24 +57,37 @@ jobs:
       - name: Prepare PDF.js vendor assets
         run: pnpm --filter @readest/readest-app setup-vendors
 
-      - name: Prefer Maven Central for Kotlin Gradle dependencies
+      - name: Prefer Google Cloud Maven Central mirror for Kotlin
         run: |
+          # The default Maven hosts have been returning GitHub-release 504s
+          # for kotlin-compiler-embeddable 2.0.21. Try the Google-hosted mirror.
+          artifact='org/jetbrains/kotlin/kotlin-compiler-embeddable/2.0.21/kotlin-compiler-embeddable-2.0.21.jar'
+          curl --fail --head --location --retry 4 --retry-delay 3 \
+            --connect-timeout 25 --max-time 120 \
+            "https://maven-central.storage-download.googleapis.com/maven2/$artifact" \
+            --output /dev/null
+
           mkdir -p "$HOME/.gradle/init.d"
           cat > "$HOME/.gradle/init.d/maven-central-first.gradle" <<'GRADLE'
-          // The Gradle Plugin Portal can redirect Kotlin compiler jars to
-          // GitHub releases, which intermittently responds with HTTP 504.
-          // Prefer Maven Central for plugin and buildSrc dependencies.
+          def gcsMirror = 'https://maven-central.storage-download.googleapis.com/maven2/'
           gradle.beforeSettings { settings ->
             settings.pluginManagement.repositories {
-              mavenCentral()
+              maven { url = uri(gcsMirror) }
               google()
               gradlePluginPortal()
+              mavenCentral()
             }
           }
           gradle.beforeProject { project ->
             project.buildscript.repositories {
-              mavenCentral()
+              maven { url = uri(gcsMirror) }
               google()
+              mavenCentral()
+            }
+            project.repositories {
+              maven { url = uri(gcsMirror) }
+              google()
+              mavenCentral()
             }
           }
           GRADLE
