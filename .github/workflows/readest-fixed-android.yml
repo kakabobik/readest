@@ -57,6 +57,28 @@ jobs:
       - name: Prepare PDF.js vendor assets
         run: pnpm --filter @readest/readest-app setup-vendors
 
+      - name: Prefer Maven Central for Kotlin Gradle dependencies
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cat > "$HOME/.gradle/init.d/maven-central-first.gradle" <<'GRADLE'
+          // The Gradle Plugin Portal can redirect Kotlin compiler jars to
+          // GitHub releases, which intermittently responds with HTTP 504.
+          // Prefer Maven Central for plugin and buildSrc dependencies.
+          gradle.beforeSettings { settings ->
+            settings.pluginManagement.repositories {
+              mavenCentral()
+              google()
+              gradlePluginPortal()
+            }
+          }
+          gradle.beforeProject { project ->
+            project.buildscript.repositories {
+              mavenCentral()
+              google()
+            }
+          }
+          GRADLE
+
       - name: Configure separate app identity
         run: |
           node <<'NODE'
