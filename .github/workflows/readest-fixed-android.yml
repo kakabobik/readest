@@ -121,7 +121,10 @@ jobs:
           const fs = require('node:fs');
           const path = 'apps/readest-app/src-tauri/tauri.conf.json';
           const config = JSON.parse(fs.readFileSync(path, 'utf8'));
-          config.identifier = 'com.kakabobik.readestfixed';
+          // Keep the original Kotlin namespace: Tauri generates TauriActivity
+          // and Logger using this identifier. Override only Gradle applicationId
+          // below to install the debug APK beside the official Readest app.
+          config.identifier = 'com.bilingify.readest';
           config.productName = 'Readest Fixed';
           fs.writeFileSync(path, JSON.stringify(config, null, 2) + '\n');
           NODE
@@ -176,8 +179,8 @@ jobs:
           const fs = require('node:fs');
           const p = 'src-tauri/tauri.conf.json';
           const j = JSON.parse(fs.readFileSync(p, 'utf8'));
-          if (j.identifier !== 'com.kakabobik.readestfixed')
-            throw new Error('Unexpected app id after Android init');
+          if (j.identifier !== 'com.bilingify.readest')
+            throw new Error('Unexpected Kotlin/Tauri namespace after Android init');
           NODE
           # The generated Gradle wrapper defaults to a 10-second download timeout.
           # GitHub runners may need longer to fetch gradle-8.14.3-bin.zip.
