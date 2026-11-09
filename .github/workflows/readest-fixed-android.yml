@@ -136,6 +136,9 @@ jobs:
           set -euo pipefail
           rm -rf src-tauri/gen/android
           pnpm tauri android init
+          # Generate the missing adaptive launcher background color/resource.
+          # The official Readest Android workflow also runs this after init.
+          pnpm tauri icon ../../data/icons/readest-book.png
           # Tauri's init overwrites Readest's tracked Gradle/Kotlin Android
           # customizations, including the 'store' and 'pen' flavor selectors.
           # Restore the project's real Android configuration (as its official
