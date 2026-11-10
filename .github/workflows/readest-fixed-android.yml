@@ -6,6 +6,9 @@ on:
       - fix/pdf-selection-handles
     paths:
       - apps/readest-app/src/app/reader/hooks/useTextSelector.ts
+      - apps/readest-app/src/app/reader/utils/annotatorUtil.ts
+      - apps/readest-app/src/app/reader/utils/crossDocSelection.ts
+      - apps/readest-app/src/__tests__/utils/cross-doc-selection.test.ts
       - .github/workflows/readest-fixed-android.yml
   workflow_dispatch:
 
@@ -79,6 +82,9 @@ jobs:
 
       - name: Prepare PDF.js vendor assets
         run: pnpm --filter @readest/readest-app setup-vendors
+
+      - name: Test PDF iframe coordinate conversions
+        run: pnpm --filter @readest/readest-app exec vitest run src/__tests__/utils/cross-doc-selection.test.ts
 
       - name: Prefer Google Cloud Maven Central mirror for Kotlin
         run: |
