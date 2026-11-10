@@ -156,6 +156,7 @@ export function getHandlePositionsFromRange(
   const firstRect = rects[0]!;
   const lastRect = rects[rects.length - 1]!;
   const doc = range.commonAncestorContainer.ownerDocument;
+  if (!doc) return null;
   // The PDF page iframe is often scaled to fit the screen. getClientRects()
   // returns coordinates in the iframe's unscaled CSS space; use the inverse
   // transform from the selection drag hit-testing path to position both handles.
