@@ -68,6 +68,18 @@ export const toDocPoint = (doc: Document, point: Point): Point | null => {
   return { x: (point.x - rect.left) * sx, y: (point.y - rect.top) * sy };
 };
 
+// Translate a caret/handle point in a PDF iframe back into window coordinates.
+// PDF pages are often displayed at a CSS transform scale different from 1.
+// This is the inverse of toDocPoint and must be used for all draggable handles.
+export const toWindowPoint = (doc: Document, point: Point): Point | null => {
+  const frame = frameOf(doc);
+  const rect = frame?.getBoundingClientRect();
+  if (!frame || !rect || rect.width === 0 || rect.height === 0) return null;
+  const sx = frame.clientWidth ? rect.width / frame.clientWidth : 1;
+  const sy = frame.clientHeight ? rect.height / frame.clientHeight : 1;
+  return { x: rect.left + point.x * sx, y: rect.top + point.y * sy };
+};
+
 export const getCaretPosition = (doc: Document, x: number, y: number): DocPosition | null => {
   if (doc.caretPositionFromPoint) {
     const pos = doc.caretPositionFromPoint(x, y);
