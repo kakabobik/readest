@@ -9,6 +9,7 @@ import {
   rangeBetweenPositions,
   setNativeDragFrozen,
   toDocPoint,
+  toWindowPoint,
 } from '@/app/reader/utils/crossDocSelection';
 import type { Rect } from '@/utils/sel';
 
@@ -69,6 +70,17 @@ describe('crossDocSelection', () => {
       Object.defineProperty(a.iframe, 'clientWidth', { value: 400 });
       Object.defineProperty(a.iframe, 'clientHeight', { value: 400 });
       expect(toDocPoint(a.doc, { x: 200, y: 150 })).toEqual({ x: 200, y: 200 });
+      expect(toWindowPoint(a.doc, { x: 200, y: 200 })).toEqual({ x: 200, y: 150 });
+    });
+
+    it('round trips handle and touch coordinates at different X/Y scales', () => {
+      const a = makePage({ left: 120, top: 35, right: 420, bottom: 235 }, ['alpha'], 0);
+      Object.defineProperty(a.iframe, 'clientWidth', { value: 600 });
+      Object.defineProperty(a.iframe, 'clientHeight', { value: 800 });
+      const pagePoint = { x: 400, y: 700 };
+      const windowPoint = toWindowPoint(a.doc, pagePoint);
+      expect(windowPoint).toEqual({ x: 320, y: 210 });
+      expect(toDocPoint(a.doc, windowPoint!)).toEqual(pagePoint);
     });
   });
 
