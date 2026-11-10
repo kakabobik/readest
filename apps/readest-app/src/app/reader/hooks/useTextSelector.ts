@@ -347,14 +347,16 @@ export const useTextSelector = (
       // Single-document drag (reflowable books, paginated fixed layout): the
       // range runs from the anchor to the caret under the point in the anchor's
       // own document, exactly as the handles always worked.
-      const feRect = anchor.doc.defaultView?.frameElement?.getBoundingClientRect();
-      const range = rangeFromAnchorToPoint(
-        anchor.doc,
-        anchor.pos.node,
-        anchor.pos.offset,
-        point.x - (feRect?.left ?? 0),
-        point.y - (feRect?.top ?? 0),
-      );
+      const localPoint = toDocPoint(anchor.doc, point);
+      const range = localPoint
+        ? rangeFromAnchorToPoint(
+            anchor.doc,
+            anchor.pos.node,
+            anchor.pos.offset,
+            localPoint.x,
+            localPoint.y,
+          )
+        : null;
       if (!range) return commit ? commitLive() : null;
       await applyProgrammaticSelection(range, anchor.index, commit);
       return rangeBounds(anchor.doc, anchor.index, range);
@@ -1005,14 +1007,14 @@ export const useTextSelector = (
       // touchstart and fed by native touchmove): rebuild between those when
       // the gesture moved; otherwise fall back to the anchor-jump repair.
       const p = pointerPos.current;
-      const feRect = win.frameElement?.getBoundingClientRect();
-      const clamped = p
+      const localPoint = p ? toDocPoint(doc, p) : null;
+      const clamped = localPoint
         ? rangeFromAnchorToPoint(
             doc,
             initial.node,
             initial.offset,
-            p.x - (feRect?.left ?? 0),
-            p.y - (feRect?.top ?? 0),
+            localPoint.x,
+            localPoint.y,
           )
         : null;
       const repaired = clamped ?? repairJumpedSelectionRange(sel, initial.node, initial.offset);
