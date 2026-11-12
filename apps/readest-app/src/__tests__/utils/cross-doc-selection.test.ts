@@ -111,6 +111,9 @@ describe('crossDocSelection', () => {
         const top = this.toString() === 'first' ? 10 : 100;
         return { left: 0, right: 50, top, bottom: top + 10, width: 50, height: 10 } as DOMRect;
       };
+      // jsdom has no glyph/caret layout. Exercise the native fallback here;
+      // the real geometry path is covered by pdf-selection-hit-test.browser.
+      win.Range.prototype.getClientRects = () => [] as unknown as DOMRectList;
       a.doc.caretPositionFromPoint = () => ({ offsetNode: textNode(a.doc, 1), offset: 2 }) as never;
       expect(getCaretPositionInText(a.doc, 20, 5)).toEqual({ node: textNode(a.doc, 0), offset: 0 });
       expect(getCaretPositionInText(a.doc, 20, 200)).toEqual({
