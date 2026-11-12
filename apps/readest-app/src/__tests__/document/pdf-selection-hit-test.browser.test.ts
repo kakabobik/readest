@@ -8,6 +8,16 @@ import {
 } from '@/app/reader/utils/crossDocSelection';
 import { getPdfCaretPosition } from '@/utils/pdfText';
 
+type PDFBook = {
+  sections: {
+    load: () => Promise<{
+      src: string;
+      onZoom: (options: { doc: Document; scale: number; pageColors: undefined }) => Promise<void>;
+    }>;
+  }[];
+  destroy: () => void;
+};
+
 let iframe: HTMLIFrameElement;
 afterEach(() => iframe?.remove());
 const mount = async (scale = 0.6) => {
@@ -91,7 +101,7 @@ it('keeps a handle in the adjacent line of a rendered two-column PDF', async () 
   const file = new File([await response.arrayBuffer()], 'sample-paper.pdf', {
     type: 'application/pdf',
   });
-  const book = await makePDF(file);
+  const book = (await makePDF(file)) as unknown as PDFBook;
   try {
     const page = await book.sections[0]!.load();
     iframe = document.createElement('iframe');

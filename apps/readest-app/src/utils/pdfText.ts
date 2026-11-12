@@ -231,6 +231,22 @@ export const getPdfCaretPosition = (
     Math.max(rect.left - x, 0, x - rect.right) ** 2 +
     Math.max(rect.top - y, 0, y - rect.bottom) ** 2;
   const probe = doc.createRange();
+  const nativePosition = doc.caretPositionFromPoint?.(x, y);
+  const nativeRange = nativePosition ? null : doc.caretRangeFromPoint?.(x, y);
+  const nativeNode = nativePosition?.offsetNode ?? nativeRange?.startContainer;
+  const nativeOffset = nativePosition?.offset ?? nativeRange?.startOffset;
+  if (nativeNode?.nodeType === Node.TEXT_NODE && layer.contains(nativeNode)) {
+    probe.selectNodeContents(nativeNode);
+    // Preserve the engine's glyph/bidi hit-testing when actually over text.
+    // A caret returned for a gap may point to an unrelated run, so require
+    // the point to lie within that run before trusting it.
+    if (
+      [...probe.getClientRects()].some(
+        (rect) => x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom,
+      )
+    )
+      return { node: nativeNode, offset: nativeOffset! };
+  }
   const walker = doc.createTreeWalker(layer, NodeFilter.SHOW_TEXT);
   let nearest: Text | null = null;
   let best = Infinity;

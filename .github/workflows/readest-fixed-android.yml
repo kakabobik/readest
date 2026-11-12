@@ -87,8 +87,8 @@ jobs:
       - name: Prepare PDF.js vendor assets
         run: pnpm --filter @readest/readest-app setup-vendors
 
-      - name: Test PDF iframe coordinate conversions
-        run: pnpm --filter @readest/readest-app exec vitest run src/__tests__/utils/cross-doc-selection.test.ts
+      - name: Test PDF selection utilities and handle integration
+        run: pnpm --filter @readest/readest-app exec vitest run src/__tests__/utils/cross-doc-selection.test.ts src/__tests__/app/reader/hooks/useTextSelector-crossPage.test.ts src/__tests__/utils/pdfText.test.ts src/__tests__/app/reader/hooks/useTextSelector-nativeHandles.test.ts
 
       - name: Install Chromium for PDF selection regression tests
         run: pnpm --filter @readest/readest-app exec playwright install --with-deps chromium
