@@ -1,4 +1,5 @@
 import { Point } from '@/utils/sel';
+import { getPdfCaretPosition } from '@/utils/pdfText';
 
 // A selection that runs across section documents (#5809). Fixed-layout books
 // render every PDF page in its own iframe, and a DOM Selection cannot leave its
@@ -156,7 +157,7 @@ export const getCaretPositionInText = (doc: Document, x: number, y: number): Doc
   }
   if (y < top) return bounds.start;
   if (y > bottom) return bounds.end;
-  return getCaretPosition(doc, x, y);
+  return getPdfCaretPosition(doc, x, y) ?? getCaretPosition(doc, x, y);
 };
 
 // The range between two positions of a document, whichever comes first.

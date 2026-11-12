@@ -4,7 +4,11 @@ on:
   push:
     branches:
       - fix/pdf-selection-handles
+      - fix/pdf-selection-webview-regression
     paths:
+      - apps/readest-app/src/utils/pdfText.ts
+      - apps/readest-app/src/utils/sel.ts
+      - apps/readest-app/src/__tests__/document/pdf-selection-hit-test.browser.test.ts
       - apps/readest-app/src/app/reader/hooks/useTextSelector.ts
       - apps/readest-app/src/app/reader/utils/annotatorUtil.ts
       - apps/readest-app/src/app/reader/utils/crossDocSelection.ts
@@ -86,6 +90,12 @@ jobs:
       - name: Test PDF iframe coordinate conversions
         run: pnpm --filter @readest/readest-app exec vitest run src/__tests__/utils/cross-doc-selection.test.ts
 
+      - name: Install Chromium for PDF selection regression tests
+        run: pnpm --filter @readest/readest-app exec playwright install --with-deps chromium
+
+      - name: Test PDF selection across text-layer gaps
+        run: pnpm --filter @readest/readest-app exec vitest run --config vitest.browser.config.mts src/__tests__/document/pdf-selection-hit-test.browser.test.ts
+
       - name: Prefer Google Cloud Maven Central mirror for Kotlin
         run: |
           # The default Maven hosts have been returning GitHub-release 504s
@@ -131,7 +141,7 @@ jobs:
           // and Logger using this identifier. Override only Gradle applicationId
           // below to install the debug APK beside the official Readest app.
           config.identifier = 'com.bilingify.readest';
-          config.productName = 'Readest Fixed';
+          config.productName = 'Readest PDF Test';
           fs.writeFileSync(path, JSON.stringify(config, null, 2) + '\n');
           NODE
           echo 'NEXT_PUBLIC_APP_PLATFORM=tauri' > apps/readest-app/.env.local
@@ -217,7 +227,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Readest-Fixed-Android-arm64-debug
+          name: Readest-PDF-Selection-Test-arm64-debug
           path: apps/readest-app/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
           retention-days: 14
