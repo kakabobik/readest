@@ -22,7 +22,7 @@ permissions:
 jobs:
   android-debug-apk:
     name: Android ARM64 debug APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 110
     steps:
       - name: Check out patched fork

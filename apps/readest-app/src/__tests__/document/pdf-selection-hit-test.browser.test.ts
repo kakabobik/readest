@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { setupPanningEvents } from 'foliate-js/pdf.js';
+import { makePDF, setupPanningEvents } from 'foliate-js/pdf.js';
 import { rangeFromAnchorToPoint } from '@/utils/sel';
 import {
   getCaretPositionInText,
@@ -84,4 +84,47 @@ describe('PDF app handles hit test text-layer gaps', () => {
     doc.querySelector('.textLayer')!.classList.remove('textLayer');
     expect(getPdfCaretPosition(doc, 210, 151)).toBeNull();
   });
+});
+
+it('keeps a handle in the adjacent line of a rendered two-column PDF', async () => {
+  const response = await fetch(new URL('../fixtures/data/sample-paper.pdf', import.meta.url));
+  const file = new File([await response.arrayBuffer()], 'sample-paper.pdf', {
+    type: 'application/pdf',
+  });
+  const book = await makePDF(file);
+  try {
+    const page = await book.sections[0]!.load();
+    iframe = document.createElement('iframe');
+    iframe.style.cssText =
+      'width:612px;height:792px;border:0;transform:scale(.6);transform-origin:0 0';
+    const loaded = new Promise((resolve) =>
+      iframe.addEventListener('load', resolve, { once: true }),
+    );
+    iframe.src = page.src;
+    document.body.append(iframe);
+    await loaded;
+    const doc = iframe.contentDocument!;
+    await page.onZoom({ doc, scale: 1, pageColors: undefined });
+    const spans = [...doc.querySelectorAll('.textLayer span')].filter((span) =>
+      span.textContent?.trim(),
+    );
+    const anchor = spans[4]!.firstChild!;
+    const target = spans[5]!;
+    const initial = doc.createRange();
+    initial.selectNodeContents(anchor);
+    doc.getSelection()!.addRange(initial);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const rect = target.getBoundingClientRect();
+    const range = rangeFromAnchorToPoint(
+      doc,
+      anchor,
+      0,
+      rect.left + rect.width / 2,
+      rect.bottom + 1,
+    )!;
+    expect(range.endContainer).toBe(target.firstChild);
+    expect(range.toString()).not.toContain('INTRODUCTION');
+  } finally {
+    book.destroy?.();
+  }
 });
